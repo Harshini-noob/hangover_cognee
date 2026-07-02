@@ -177,3 +177,48 @@ async def forget_all():
     state["node_count"] = 0
     state["edge_count"] = 0
     return {"status": "All memory cleared"}
+
+class RiskRequest(BaseModel):
+    change_description: str
+
+@app.post("/risk-check")
+async def risk_check(req: RiskRequest):
+    if not req.change_description.strip():
+        raise HTTPException(400, "Describe the change first")
+    
+    # Ask memory if we've seen anything like this before
+    query = f"Have we tried or failed with something similar to: {req.change_description}"
+    try:
+        results = await cognee.recall(
+            query_text=query,
+            datasets=[DATASET]
+        )
+        if not results:
+            return {
+                "risk_level": "unknown",
+                "warning": None,
+                "message": "No similar past decisions found in memory.",
+                "safe": True,
+            }
+
+        answer = results[0].text if hasattr(results[0], "text") else str(results[0])
+
+        # Determine risk level from answer content
+        danger_keywords = ["failed", "reverted", "outage", "broken", "rejected", "bug", "incident", "postmortem", "rollback"]
+        caution_keywords = ["changed", "replaced", "switched", "refactored", "fixed"]
+
+        answer_lower = answer.lower()
+        risk_level = "low"
+        if any(w in answer_lower for w in danger_keywords):
+            risk_level = "high"
+        elif any(w in answer_lower for w in caution_keywords):
+            risk_level = "medium"
+
+        return {
+            "risk_level": risk_level,
+            "warning": answer if risk_level != "low" else None,
+            "message": answer,
+            "safe": risk_level == "low",
+        }
+    except Exception as e:
+        raise HTTPException(500, str(e))

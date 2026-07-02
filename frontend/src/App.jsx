@@ -158,6 +158,100 @@ function Message({ msg }) {
   );
 }
 
+// ── Risk checker ──────────────────────────────────────
+function RiskChecker() {
+  const [input, setInput] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function check() {
+    if (!input.trim()) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const r = await fetch(`${API}/risk-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ change_description: input }),
+      });
+      const data = await r.json();
+      setResult(data);
+    } catch (e) {
+      setResult({ risk_level: "error", message: e.message });
+    }
+    setLoading(false);
+  }
+
+  const riskColor = result?.risk_level === "high" ? C.red
+    : result?.risk_level === "medium" ? C.amber
+    : C.green;
+
+  const riskExamples = [
+    "Switch from PostgreSQL to MongoDB for the main database",
+    "Change JWT token expiry to use server local time",
+    "Poll the API every 2 seconds for live updates",
+    "Increase nginx file upload limit to 50MB",
+  ];
+
+  return (
+    <div>
+      <textarea
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        placeholder="e.g. I want to migrate our database from PostgreSQL to MongoDB..."
+        rows={4}
+        style={{
+          width: "100%", background: C.surface2, border: `1px solid ${C.border}`,
+          borderRadius: 8, padding: 16, color: C.text, fontSize: 14,
+          fontFamily: "inherit", resize: "vertical", outline: "none",
+          lineHeight: 1.6,
+        }}
+      />
+      <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center" }}>
+        <Btn onClick={check} disabled={loading || !input.trim()} color={C.amber}>
+          {loading ? "⏳ Checking memory..." : "🔍 Check Risk"}
+        </Btn>
+        <span style={{ color: C.muted, fontSize: 12 }}>or try an example:</span>
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+        {riskExamples.map((ex, i) => (
+          <button key={i} onClick={() => setInput(ex)} style={{
+            background: C.surface2, border: `1px solid ${C.border}`,
+            borderRadius: 20, padding: "6px 14px", color: C.muted,
+            fontSize: 12, cursor: "pointer", fontFamily: "monospace",
+          }}>{ex.slice(0, 40)}...</button>
+        ))}
+      </div>
+
+      {result && (
+        <div style={{
+          marginTop: 24, background: C.surface2,
+          border: `2px solid ${riskColor}44`,
+          borderRadius: 10, padding: 20,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+            <span style={{ fontSize: 28 }}>
+              {result.risk_level === "high" ? "🚨" : result.risk_level === "medium" ? "⚠️" : "✅"}
+            </span>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: riskColor, textTransform: "uppercase", letterSpacing: 1 }}>
+                {result.risk_level} risk
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, fontFamily: "monospace" }}>
+                based on {result.risk_level === "high" ? "past incidents in memory" : "memory graph analysis"}
+              </div>
+            </div>
+          </div>
+          <div style={{ color: C.text, fontSize: 14, lineHeight: 1.7, borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>
+            {result.message}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main App ────────────────────────────────────────────
 export default function App() {
   const [status, setStatus] = useState({ ingested: false, record_count: 0, node_count: 0, edge_count: 0 });
@@ -267,7 +361,7 @@ export default function App() {
     setMessages(m => [...m, { role, content, id: Date.now() }]);
   }
 
-  const tabs = ["chat", "graph", "ops"];
+  const tabs = ["chat", "graph", "ops", "risk"];
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
@@ -452,6 +546,20 @@ export default function App() {
                   </Btn>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* RISK TAB */}
+        {activeTab === "risk" && (
+          <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+            <div style={{ maxWidth: 600, margin: "0 auto" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>⚠️ Risk Flagging</div>
+              <div style={{ color: C.muted, fontSize: 13, marginBottom: 24, lineHeight: 1.6 }}>
+                Describe a change you're about to make. The Memory Surgeon checks past decisions,
+                incidents, and reverts to warn you if you're about to repeat a mistake.
+              </div>
+              <RiskChecker />
             </div>
           </div>
         )}
