@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-
+import GraphD3 from "./GraphD3";
 const API = "http://localhost:8000";
 
 // ── Design tokens ──────────────────────────────────────
@@ -460,12 +460,12 @@ export default function App() {
         {/* GRAPH TAB */}
         {activeTab === "graph" && (
           <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
-            <div style={{ maxWidth: 600, margin: "0 auto" }}>
+            <div style={{ maxWidth: 750, margin: "0 auto" }}>
               <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, color: C.text }}>Knowledge Graph</div>
               <div style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>
-                Visual representation of extracted entities and relationships from your codebase history.
+                Interactive graph of extracted entities and relationships. Drag nodes, scroll to zoom.
               </div>
-              <GraphViz nodes={graphNodes} edges={[]} />
+              <GraphD3 width={700} height={450} />
               <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 {[
                   { label: "Auth Middleware", type: "commit", desc: "JWT timezone fix • PR #42" },
@@ -473,14 +473,9 @@ export default function App() {
                   { label: "Redis Outage", type: "issue", desc: "Cache key collision • Issue #31" },
                   { label: "WebSocket Switch", type: "pull_request", desc: "94% API call reduction • PR #67" },
                 ].map((node, i) => (
-                  <div key={i} style={{
-                    background: C.surface2, border: `1px solid ${C.border}`,
-                    borderRadius: 8, padding: 16,
-                  }}>
+                  <div key={i} style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: 16 }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                      <Badge color={node.type === "commit" ? C.cyan : node.type === "pull_request" ? C.green : C.amber}>
-                        {node.type}
-                      </Badge>
+                      <Badge color={node.type === "commit" ? C.cyan : node.type === "pull_request" ? C.green : C.amber}>{node.type}</Badge>
                     </div>
                     <div style={{ fontWeight: 600, fontSize: 14, color: C.text, marginBottom: 4 }}>{node.label}</div>
                     <div style={{ fontSize: 12, color: C.muted, fontFamily: "monospace" }}>{node.desc}</div>
