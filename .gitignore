@@ -1,5 +1,17 @@
+# Python
 venv/
-.env
 __pycache__/
 *.pyc
+*.pyo
+.env
+
+# Cognee DB (don't commit the actual graph data)
 .cognee_system/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Misc
+*.log
+.DS_Store
