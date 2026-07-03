@@ -252,6 +252,84 @@ function RiskChecker() {
   );
 }
 
+function ReportTab() {
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  async function generate() {
+    setLoading(true);
+    setReport(null);
+    try {
+      const r = await fetch(`${API}/tribal-report`);
+      const data = await r.json();
+      setReport(data);
+    } catch (e) {
+      alert("Failed: " + e.message);
+    }
+    setLoading(false);
+  }
+
+  function downloadMd() {
+    if (!report) return;
+    const md = `# ${report.title}\n${report.subtitle}\n_Generated: ${report.generated_at}_\n\n` +
+      report.sections.map(s => `## ${s.title}\n${s.content}`).join("\n\n");
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url;
+    a.download = "tribal-knowledge.md"; a.click();
+  }
+
+  return (
+    <div style={{ flex: 1, padding: 24, overflowY: "auto" }}>
+      <div style={{ maxWidth: 700, margin: "0 auto" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, color: C.text }}>
+          📋 Tribal Knowledge Report
+        </div>
+        <div style={{ color: C.muted, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+          One click generates a full onboarding document from the codebase memory —
+          architecture decisions, danger zones, rejected approaches, and hard-won lessons.
+          Perfect for new engineers joining the team.
+        </div>
+        <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+          <Btn onClick={generate} disabled={loading} color={C.cyan}>
+            {loading ? "⏳ Generating report..." : "📋 Generate Report"}
+          </Btn>
+          {report && <Btn onClick={downloadMd} color={C.green} small>⬇️ Download .md</Btn>}
+        </div>
+
+        {loading && (
+          <div style={{ color: C.muted, fontFamily: "monospace", fontSize: 13 }}>
+            Querying memory graph across 5 dimensions... this takes ~30 seconds
+          </div>
+        )}
+
+        {report && (
+          <div>
+            <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: 20, marginBottom: 20 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.cyan, marginBottom: 4 }}>{report.title}</div>
+              <div style={{ color: C.muted, fontSize: 13 }}>{report.subtitle}</div>
+              <div style={{ color: C.muted, fontSize: 11, marginTop: 4, fontFamily: "monospace" }}>
+                Generated: {new Date(report.generated_at).toLocaleString()}
+              </div>
+            </div>
+            {report.sections.map((section, i) => (
+              <div key={i} style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: 20, marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: C.text, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: C.cyan, fontFamily: "monospace", fontSize: 12 }}>0{i+1}</span>
+                  {section.title}
+                </div>
+                <div style={{ color: C.text, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                  {section.content}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ────────────────────────────────────────────
 export default function App() {
   const [status, setStatus] = useState({ ingested: false, record_count: 0, node_count: 0, edge_count: 0 });
@@ -361,7 +439,7 @@ export default function App() {
     setMessages(m => [...m, { role, content, id: Date.now() }]);
   }
 
-  const tabs = ["chat", "graph", "ops", "risk"];
+  const tabs = ["chat", "graph", "report", "ops", "risk"];
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Inter', system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
@@ -485,6 +563,9 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* REPORT TAB */}
+        {activeTab === "report" && <ReportTab />}
 
         {/* OPS TAB */}
         {activeTab === "ops" && (

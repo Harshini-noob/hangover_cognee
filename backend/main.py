@@ -242,3 +242,28 @@ async def lifespan(app: FastAPI):
     else:
         print("⚠️  Running local Cognee (no cloud credentials)")
     yield
+
+
+@app.get("/tribal-report")
+async def tribal_report():
+    queries = [
+        ("Architecture Decisions", "what are the main architectural decisions and why were they made?"),
+        ("Known Danger Zones", "what are the recurring bugs incidents and failure patterns?"),
+        ("Rejected Approaches", "what approaches or migrations were rejected and why?"),
+        ("Hard-Won Lessons", "what lessons were learned from production incidents?"),
+        ("Coding Conventions", "what coding conventions and best practices does this codebase follow?"),
+    ]
+    sections = []
+    for title, query in queries:
+        try:
+            results = await cognee.recall(query_text=query, datasets=[DATASET])
+            answer = results[0].text if results and hasattr(results[0], "text") else "No data found."
+            sections.append({"title": title, "content": answer})
+        except Exception as e:
+            sections.append({"title": title, "content": f"Could not retrieve: {str(e)}"})
+    return {
+        "title": "Tribal Knowledge Report",
+        "subtitle": "Auto-generated onboarding doc from codebase memory",
+        "generated_at": __import__("datetime").datetime.now().isoformat(),
+        "sections": sections,
+    }
