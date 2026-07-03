@@ -11,7 +11,14 @@ load_dotenv()
 
 import cognee
 
+
+
+# Point to Cognee Cloud
+os.environ["COGNEE_API_KEY"] = os.getenv("COGNEE_API_KEY", "")
+os.environ["COGNEE_BASE_URL"] = os.getenv("COGNEE_BASE_URL", "")
+
 DATASET = "repo_memory"
+
 
 # ── Startup ──────────────────────────────────────────────
 @asynccontextmanager
@@ -222,3 +229,16 @@ async def risk_check(req: RiskRequest):
         }
     except Exception as e:
         raise HTTPException(500, str(e))
+    
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Connect to Cognee Cloud
+    base_url = os.getenv("COGNEE_BASE_URL")
+    api_key = os.getenv("COGNEE_API_KEY")
+    if base_url and api_key:
+        await cognee.serve(api_url=base_url, api_key=api_key)
+        print(f"✅ Connected to Cognee Cloud: {base_url}")
+    else:
+        print("⚠️  Running local Cognee (no cloud credentials)")
+    yield
