@@ -23,7 +23,7 @@ DATASET = "repo_memory"
 # ── Startup ──────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("✅ CodeBase Memory Surgeon API ready")
+    print("CodeBase Memory Surgeon API ready")
     yield
 
 app = FastAPI(title="CodeBase Memory Surgeon", lifespan=lifespan)
@@ -102,7 +102,6 @@ async def ingest(req: IngestRequest):
 
         records = SAMPLE_RECORDS
         if not req.use_sample:
-            # GitHub fetch (only if token is set)
             token = os.getenv("GITHUB_TOKEN")
             repo_name = os.getenv("GITHUB_REPO")
             if token and repo_name:
@@ -119,7 +118,7 @@ async def ingest(req: IngestRequest):
 
         state["ingested"] = True
         state["record_count"] = len(records)
-        state["node_count"] = 109   # from our confirmed run
+        state["node_count"] = 109   
         state["edge_count"] = 172
         state["ingesting"] = False
 
@@ -170,7 +169,6 @@ async def improve():
 
 @app.post("/feedback")
 async def feedback(req: FeedbackRequest):
-    # Store feedback as a memory note so improve() picks it up
     note = f"User feedback on {req.record_id}: {'HELPFUL' if req.was_helpful else 'NOT HELPFUL'}"
     await cognee.remember(note, dataset_name=DATASET)
     return {"status": "feedback recorded", "record_id": req.record_id}
@@ -193,7 +191,6 @@ async def risk_check(req: RiskRequest):
     if not req.change_description.strip():
         raise HTTPException(400, "Describe the change first")
     
-    # Ask memory if we've seen anything like this before
     query = f"Have we tried or failed with something similar to: {req.change_description}"
     try:
         results = await cognee.recall(
@@ -210,7 +207,6 @@ async def risk_check(req: RiskRequest):
 
         answer = results[0].text if hasattr(results[0], "text") else str(results[0])
 
-        # Determine risk level from answer content
         danger_keywords = ["failed", "reverted", "outage", "broken", "rejected", "bug", "incident", "postmortem", "rollback"]
         caution_keywords = ["changed", "replaced", "switched", "refactored", "fixed"]
 
@@ -238,9 +234,9 @@ async def lifespan(app: FastAPI):
     api_key = os.getenv("COGNEE_API_KEY")
     if base_url and api_key:
         await cognee.serve(api_url=base_url, api_key=api_key)
-        print(f"✅ Connected to Cognee Cloud: {base_url}")
+        print(f"Connected to Cognee Cloud: {base_url}")
     else:
-        print("⚠️  Running local Cognee (no cloud credentials)")
+        print(" Running local Cognee (no cloud credentials)")
     yield
 
 

@@ -5,7 +5,7 @@ load_dotenv()
 import cognee
 
 async def main():
-    # Do NOT call forget()
+    
 
     await cognee.remember(
         "Harshini fixed the authentication bug in PR #42. "

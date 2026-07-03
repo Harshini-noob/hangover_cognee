@@ -5,7 +5,7 @@ load_dotenv()
 import cognee
 from backend.memory import remember_records, run_improve
 
-# Hardcoded decision records — realistic, demo-ready
+
 SAMPLE_RECORDS = [
     {
         "id": "commit:a1b2c3d4",
@@ -60,18 +60,17 @@ SAMPLE_RECORDS = [
 ]
 
 async def main():
-    #print("🗑️  Clearing old memory...")
-    #await cognee.forget(everything=True)
     
-    print(f"\n🧠 Ingesting {len(SAMPLE_RECORDS)} decision records...")
+    
+    print(f"\n Ingesting {len(SAMPLE_RECORDS)} decision records...")
     results = await remember_records(SAMPLE_RECORDS)
     ok = len([r for r in results if r["status"] == "ok"])
-    print(f"\n✅ Ingested: {ok}/{len(SAMPLE_RECORDS)}")
+    print(f"\n Ingested: {ok}/{len(SAMPLE_RECORDS)}")
 
-    print("\n⚡ Running improve()...")
+    print("\n Running improve()...")
     await run_improve()
 
-    print("\n🔍 Testing recall...")
+    print("\nTesting recall...")
     test_queries = [
         "what caused the auth bug?",
         "why did we reject the MongoDB migration?",
@@ -83,6 +82,6 @@ async def main():
         print(f"\nQ: {q}")
         print(f"A: {answer[:200]}")
 
-    print("\n🎉 Done! Memory Surgeon is loaded and ready.")
+    print("\n Done! Memory Surgeon is loaded and ready.")
 
 asyncio.run(main())

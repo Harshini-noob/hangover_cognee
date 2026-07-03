@@ -6,7 +6,7 @@ class GitHubFetcher:
     def __init__(self):
         self.gh = Github(os.getenv("GITHUB_TOKEN"))
         self.repo = self.gh.get_repo(os.getenv("GITHUB_REPO"))
-        print(f"✅ Connected: {self.repo.full_name}")
+        print(f"Connected: {self.repo.full_name}")
 
     def fetch_commits_only(self, max_commits=25):
         records = []
@@ -15,7 +15,7 @@ class GitHubFetcher:
         try:
             commits = list(self.repo.get_commits()[:max_commits])
         except Exception as e:
-            print(f"❌ Failed fetching commits: {e}")
+            print(f"Failed fetching commits: {e}")
             return records
 
         for commit in commits:
@@ -46,7 +46,7 @@ class GitHubFetcher:
                 "url": commit.html_url
             })
 
-        print(f"✅ Got {len(records)} commits")
+        print(f"Got {len(records)} commits")
         return records
 
     def fetch_issues_only(self, max_issues=15):
@@ -58,7 +58,7 @@ class GitHubFetcher:
                 self.repo.get_issues(state="closed", sort="updated", direction="desc")[:max_issues]
             )
         except Exception as e:
-            print(f"❌ Failed fetching issues: {e}")
+            print(f"Failed fetching issues: {e}")
             return records
 
         for issue in issues:
@@ -80,12 +80,12 @@ class GitHubFetcher:
             except Exception:
                 continue
 
-        print(f"✅ Got {len(records)} issues")
+        print(f"Got {len(records)} issues")
         return records
 
     def fetch_all(self, max_commits=25, max_prs=0, max_issues=15):
         records = []
         records.extend(self.fetch_commits_only(max_commits))
         records.extend(self.fetch_issues_only(max_issues))
-        print(f"✅ Total: {len(records)} records")
+        print(f"Total: {len(records)} records")
         return records

@@ -7,10 +7,10 @@ async def remember_records(records):
     for i, record in enumerate(records):
         try:
             await cognee.remember(record["text"], dataset_name=DATASET)
-            print(f"  ✅ [{i+1}/{len(records)}] {record['id']}")
+            print(f"   [{i+1}/{len(records)}] {record['id']}")
             results.append({"id": record["id"], "status": "ok"})
         except Exception as e:
-            print(f"  ❌ [{i+1}/{len(records)}] {record['id']}: {e}")
+            print(f"   [{i+1}/{len(records)}] {record['id']}: {e}")
             results.append({"id": record["id"], "status": "error", "error": str(e)})
     return results
 
