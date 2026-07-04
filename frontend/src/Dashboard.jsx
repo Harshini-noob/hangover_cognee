@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import * as d3 from "d3";
+import logo from "./assets/logo.png";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -715,7 +716,7 @@ export default function Dashboard({ status, setStatus }) {
         boxShadow: "0 0 20px rgba(0,212,255,0.08)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Icon name="biotech" size={22} color={C.cyan} />
+          <img src={logo} alt="Memory Surgeon logo" style={{ width: 24, height: 24, objectFit: "contain" }} />
           <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.02em", color: C.cyanSoft }}>Memory Surgeon</span>
           <div style={{ width: 1, height: 16, background: C.borderSoft, margin: "0 4px" }} />
           <div style={{ display: "flex", gap: 2 }}>
