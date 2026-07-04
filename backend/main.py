@@ -19,17 +19,40 @@ os.environ["COGNEE_BASE_URL"] = os.getenv("COGNEE_BASE_URL", "")
 
 DATASET = "repo_memory"
 
+def _parse_repo(raw: Optional[str]) -> Optional[str]:
+    """Accepts 'owner/name', a full GitHub URL, or None. Returns 'owner/name' or None."""
+    if not raw or not raw.strip():
+        return None
+    s = raw.strip().rstrip("/")
+    if s.startswith("http://") or s.startswith("https://"):
+        s = s.split("github.com/")[-1]
+    s = s.removesuffix(".git")
+    parts = [p for p in s.split("/") if p]
+    if len(parts) >= 2:
+        return f"{parts[-2]}/{parts[-1]}"
+    return None
+
 
 # ── Startup ──────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Connect to Cognee Cloud if credentials are present
+    base_url = os.getenv("COGNEE_BASE_URL")
+    api_key = os.getenv("COGNEE_API_KEY")
+    if base_url and api_key:
+        await cognee.serve(url=base_url, api_key=api_key)
+        print(f"Connected to Cognee Cloud: {base_url}")
+    else:
+        print("Running local Cognee (no cloud credentials)")
     print("CodeBase Memory Surgeon API ready")
     yield
 
 app = FastAPI(title="CodeBase Memory Surgeon", lifespan=lifespan)
+
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -47,6 +70,7 @@ class ForgetNodeRequest(BaseModel):
 
 class IngestRequest(BaseModel):
     use_sample: bool = True   # True = sample data, False = GitHub
+    repo: Optional[str] = None  # e.g. "owner/name" — overrides GITHUB_REPO env var
 
 # ── Sample data (used for fast demo) ─────────────────────
 SAMPLE_RECORDS = [
@@ -103,18 +127,24 @@ async def ingest(req: IngestRequest):
         records = SAMPLE_RECORDS
         if not req.use_sample:
             token = os.getenv("GITHUB_TOKEN")
-            repo_name = os.getenv("GITHUB_REPO")
+            repo_name = _parse_repo(req.repo) or os.getenv("GITHUB_REPO")
             if token and repo_name:
                 from backend.github_fetcher import GitHubFetcher
-                fetcher = GitHubFetcher()
+                fetcher = GitHubFetcher(repo_name)
                 records = fetcher.fetch_all(max_commits=20, max_issues=10)
             else:
-                raise HTTPException(400, "GITHUB_TOKEN and GITHUB_REPO must be set for real data")
+                missing = []
+                if not token: missing.append("GITHUB_TOKEN (set in backend .env)")
+                if not repo_name: missing.append("a repo (type one in the UI, or set GITHUB_REPO in .env)")
+                raise HTTPException(400, f"Missing: {' and '.join(missing)}")
 
         for record in records:
             await cognee.remember(record["text"], dataset_name=DATASET)
 
-        await cognee.improve()
+        try:
+            await cognee.improve()
+        except Exception as e:
+            print(f"improve() failed (non-fatal, continuing): {e}")
 
         state["ingested"] = True
         state["record_count"] = len(records)
@@ -130,6 +160,8 @@ async def ingest(req: IngestRequest):
         }
     except Exception as e:
         state["ingesting"] = False
+        import traceback
+        traceback.print_exc()
         raise HTTPException(500, str(e))
 
 
@@ -227,17 +259,44 @@ async def risk_check(req: RiskRequest):
         raise HTTPException(500, str(e))
     
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Connect to Cognee Cloud
-    base_url = os.getenv("COGNEE_BASE_URL")
-    api_key = os.getenv("COGNEE_API_KEY")
-    if base_url and api_key:
-        await cognee.serve(api_url=base_url, api_key=api_key)
-        print(f"Connected to Cognee Cloud: {base_url}")
-    else:
-        print(" Running local Cognee (no cloud credentials)")
-    yield
+@app.get("/graph")
+async def get_graph():
+    try:
+        from cognee.infrastructure.databases.graph import get_graph_engine
+        graph_engine = await get_graph_engine()
+        raw_nodes, raw_edges = await graph_engine.get_graph_data()
+
+        def guess_type(props: dict) -> str:
+            t = (props.get("type") or props.get("node_type") or "").lower()
+            if "commit" in t: return "commit"
+            if "pull" in t or "pr" in t: return "pull_request"
+            if "issue" in t: return "issue"
+            if "postmortem" in t or "incident" in t: return "postmortem"
+            return "commit"
+
+        def guess_label(node_id: str, props: dict) -> str:
+            for key in ("name", "title", "text", "description"):
+                val = props.get(key)
+                if val:
+                    return str(val)[:60]
+            return str(node_id)[:24]
+
+        nodes = [
+            {
+                "id": str(node_id),
+                "label": guess_label(node_id, props or {}),
+                "type": guess_type(props or {}),
+                "weight": min(3, max(1, len(props or {}) // 3)),
+            }
+            for node_id, props in raw_nodes
+        ]
+        edges = [
+            {"source": str(src), "target": str(tgt), "label": rel}
+            for src, tgt, rel, _props in raw_edges
+        ]
+        return {"nodes": nodes, "edges": edges}
+    except Exception as e:
+        raise HTTPException(500, f"Could not load graph: {e}")
 
 
 @app.get("/tribal-report")
@@ -250,7 +309,9 @@ async def tribal_report():
         ("Coding Conventions", "what coding conventions and best practices does this codebase follow?"),
     ]
     sections = []
-    for title, query in queries:
+    for i, (title, query) in enumerate(queries):
+        if i > 0:
+            await asyncio.sleep(3)  # spread requests to stay under Groq free-tier TPM limits
         try:
             results = await cognee.recall(query_text=query, datasets=[DATASET])
             answer = results[0].text if results and hasattr(results[0], "text") else "No data found."

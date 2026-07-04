@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import logo from "./assets/logo.png";
 
 const TYPING_LINES = [
   "recall('why was auth middleware changed?')",
@@ -67,7 +68,7 @@ export default function Landing({ onEnter }) {
         boxShadow: "0 0 20px rgba(0,212,255,0.08)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span className="material-symbols-outlined" style={{ color: "var(--cyan)", fontSize: 24 }}>biotech</span>
+          <img src={logo} alt="Memory Surgeon logo" style={{ width: 26, height: 26, objectFit: "contain" }} />
           <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.02em", color: "var(--cyan-soft)" }}>
             Memory Surgeon
           </span>

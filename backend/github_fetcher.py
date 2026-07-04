@@ -3,9 +3,9 @@ import time
 from github import Github, GithubException
 
 class GitHubFetcher:
-    def __init__(self):
+    def __init__(self, repo_name=None):
         self.gh = Github(os.getenv("GITHUB_TOKEN"))
-        self.repo = self.gh.get_repo(os.getenv("GITHUB_REPO"))
+        self.repo = self.gh.get_repo(repo_name or os.getenv("GITHUB_REPO"))
         print(f"Connected: {self.repo.full_name}")
 
     def fetch_commits_only(self, max_commits=25):

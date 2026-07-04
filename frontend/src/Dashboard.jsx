@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import * as d3 from "d3";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // ── Design tokens ─────────────────────────────────────────
 const C = {
@@ -131,9 +131,30 @@ function NeuralGraph({ onNodeClick }) {
   const [zoomLevel, setZoomLevel] = useState(100);
   const zoomRef = useRef(null);
   const svgSelRef = useRef(null);
+  const [graphData, setGraphData] = useState(null);
+  const [usingDemo, setUsingDemo] = useState(false);
+
+  // Fetch real graph from the ingested database; fall back to demo data
+  useEffect(() => {
+    fetch(`${API}/graph`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data?.nodes?.length > 0) {
+          setGraphData({
+            nodes: data.nodes,
+            links: (data.edges || []).map(e => ({ source: e.source, target: e.target, label: e.label })),
+          });
+          setUsingDemo(false);
+        } else {
+          setGraphData(GRAPH_DATA);
+          setUsingDemo(true);
+        }
+      })
+      .catch(() => { setGraphData(GRAPH_DATA); setUsingDemo(true); });
+  }, []);
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !graphData) return;
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
     const W = svgRef.current.clientWidth || 900;
@@ -163,8 +184,8 @@ function NeuralGraph({ onNodeClick }) {
     zoomRef.current = zoom;
     svg.call(zoom);
 
-    const nodes = GRAPH_DATA.nodes.map(n => ({ ...n }));
-    const links = GRAPH_DATA.links.map(l => ({ ...l }));
+    const nodes = graphData.nodes.map(n => ({ ...n }));
+    const links = graphData.links.map(l => ({ ...l }));
 
     const sim = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id).distance(100))
@@ -231,7 +252,7 @@ function NeuralGraph({ onNodeClick }) {
     });
 
     return () => sim.stop();
-  }, []);
+  }, [graphData]);
 
   const handleZoom = (delta) => {
     if (!svgSelRef.current || !zoomRef.current) return;
@@ -241,6 +262,18 @@ function NeuralGraph({ onNodeClick }) {
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <svg ref={svgRef} style={{ width: "100%", height: "100%", background: C.bg }} />
+
+      {/* Data source badge */}
+      <div className="glass" style={{
+        position: "absolute", top: 16, left: 16, padding: "6px 12px",
+        borderRadius: 999, display: "flex", alignItems: "center", gap: 8,
+        border: `1px solid ${usingDemo ? C.amber + "44" : C.green + "44"}`,
+      }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: usingDemo ? C.amber : C.green }} />
+        <span className="mono" style={{ fontSize: 10, color: usingDemo ? C.amber : C.green, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {usingDemo ? "Demo Graph — Ingest to See Real Data" : "Live: From Ingested Memory"}
+        </span>
+      </div>
 
       {/* Zoom controls */}
       <div className="glass" style={{
@@ -492,14 +525,24 @@ function OpsPanel({ status, setStatus }) {
   const [log, setLog] = useState([]);
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [useSample, setUseSample] = useState(true);
+  const [repoUrl, setRepoUrl] = useState("");
 
   function addLog(msg, color = C.muted) { setLog(l => [...l, { msg, color, id: Date.now() }]); }
 
   async function ingest() {
     setIngesting(true); setLog([]);
-    addLog("Clearing old memory...", C.amber);
+    addLog(useSample ? "Clearing old memory (sample data)..." : `Clearing old memory (live repo: ${repoUrl || "using .env GITHUB_REPO"})...`, C.amber);
     try {
-      const r = await fetch(`${API}/ingest`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ use_sample: true }) });
+      const r = await fetch(`${API}/ingest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use_sample: useSample, repo: useSample ? null : repoUrl }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || `Ingest failed (${r.status})`);
+      }
       const data = await r.json();
       addLog(`✅ Ingested ${data.records} records`, C.green);
       addLog(`📊 Graph: ${data.nodes} nodes, ${data.edges} edges`, C.cyan);
@@ -526,7 +569,7 @@ function OpsPanel({ status, setStatus }) {
 
   async function generateReport() {
     setReportLoading(true); setReport(null);
-    addLog("Generating tribal knowledge report...", C.violet);
+    addLog("Generating tribal knowledge report (5 queries, ~30-60s on free-tier LLM limits)...", C.violet);
     try {
       const r = await fetch(`${API}/tribal-report`);
       const data = await r.json();
@@ -559,6 +602,34 @@ function OpsPanel({ status, setStatus }) {
         Cognee Memory Lifecycle APIs
       </div>
 
+      {/* Data source toggle */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, background: C.surfaceLow, border: `1px solid ${C.borderSoft}`, borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
+        <Icon name="dataset" size={16} color={C.violet} />
+        <span className="mono" style={{ fontSize: 11, color: C.muted }}>Ingest source:</span>
+        {[{ v: true, label: "Sample Data" }, { v: false, label: "Live GitHub Repo" }].map(opt => (
+          <button key={String(opt.v)} onClick={() => setUseSample(opt.v)} style={{
+            background: useSample === opt.v ? C.violetMid + "22" : "none",
+            border: `1px solid ${useSample === opt.v ? C.violetMid : C.borderSoft}`,
+            color: useSample === opt.v ? C.violet : C.muted,
+            borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer",
+            fontFamily: "JetBrains Mono, monospace",
+          }}>{opt.label}</button>
+        ))}
+      </div>
+
+      {!useSample && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: C.surfaceLow, border: `1px solid ${C.violetMid}40`, borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
+          <Icon name="link" size={16} color={C.violet} />
+          <input
+            value={repoUrl}
+            onChange={e => setRepoUrl(e.target.value)}
+            placeholder="owner/repo or https://github.com/owner/repo — leave blank to use .env GITHUB_REPO"
+            className="mono"
+            style={{ flex: 1, background: "none", border: "none", outline: "none", color: C.text, fontSize: 12 }}
+          />
+        </div>
+      )}
+
       <div style={{ display: "grid", gap: 12, marginBottom: 20 }}>
         {ops.map(op => (
           <div key={op.api} style={{ background: C.surfaceLow, border: `1px solid ${op.danger ? C.red + "33" : C.borderSoft}`, borderRadius: 10, padding: 16 }}>
@@ -571,11 +642,13 @@ function OpsPanel({ status, setStatus }) {
               <button onClick={op.action} disabled={op.loading} style={{
                 background: op.danger ? C.red + "18" : op.color + "18",
                 border: `1px solid ${op.color}40`, color: op.color,
-                borderRadius: 6, padding: "6px 14px", cursor: op.loading ? "not-allowed" : "pointer",
-                fontSize: 11, fontFamily: "JetBrains Mono, monospace", fontWeight: 600,
-                flexShrink: 0, marginLeft: 12,
+                borderRadius: 6, padding: "8px 16px", cursor: op.loading ? "not-allowed" : "pointer",
+                fontSize: 11, fontFamily: "JetBrains Mono, monospace", fontWeight: 700,
+                flexShrink: 0, marginLeft: 12, display: "flex", alignItems: "center", gap: 8,
+                textTransform: "uppercase", letterSpacing: "0.04em",
               }}>
                 <Icon name={op.icon} size={16} color={op.color} />
+                {op.loading ? "Running..." : "Run"}
               </button>
             </div>
           </div>
@@ -583,14 +656,14 @@ function OpsPanel({ status, setStatus }) {
       </div>
 
       {/* Log */}
-      {log.length > 0 && (
-        <div style={{ background: C.bg, border: `1px solid ${C.borderSoft}`, borderRadius: 8, padding: 12, marginBottom: 16 }}>
-          <div className="mono" style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", marginBottom: 8 }}>Operation Log</div>
-          {log.map(l => (
-            <div key={l.id} className="mono" style={{ fontSize: 11, color: l.color, lineHeight: 1.8 }}>{l.msg}</div>
-          ))}
-        </div>
-      )}
+      <div style={{ background: C.bg, border: `1px solid ${C.borderSoft}`, borderRadius: 8, padding: 12, marginBottom: 16, minHeight: 60 }}>
+        <div className="mono" style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", marginBottom: 8 }}>Operation Log</div>
+        {log.length === 0 ? (
+          <div className="mono" style={{ fontSize: 11, color: C.muted, opacity: 0.6 }}>No operations run yet. Click "Run" on any card above.</div>
+        ) : log.map(l => (
+          <div key={l.id} className="mono" style={{ fontSize: 11, color: l.color, lineHeight: 1.8 }}>{l.msg}</div>
+        ))}
+      </div>
 
       {/* Tribal Report */}
       {report && (
