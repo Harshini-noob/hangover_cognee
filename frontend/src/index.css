@@ -1,2 +1,128 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0a0e1a; }
+/* Design System: Surgical Intelligence */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #050505;
+  --surface:      #131313;
+  --surface-low:  #0e0e0e;
+  --surface-mid:  #1c1b1b;
+  --surface-high: #2a2a2a;
+  --surface-top:  #353534;
+  --cyan:         #00d4ff;
+  --cyan-dim:     #3cd7ff;
+  --cyan-soft:    #a8e8ff;
+  --green:        #00ff88;
+  --green-dim:    #00e479;
+  --violet:       #d0bcff;
+  --violet-mid:   #8b5cf6;
+  --red:          #ff5449;
+  --amber:        #ffb4ab;
+  --text:         #e5e2e1;
+  --text-muted:   #bbc9cf;
+  --border:       #3c494e;
+  --border-soft:  rgba(60,73,78,0.4);
+  --outline:      #859398;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--surface-low); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Glass panel */
+.glass {
+  background: rgba(10, 10, 10, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-soft);
+}
+
+/* Violet glow for AI elements */
+.glow-violet { box-shadow: 0 0 20px rgba(139, 92, 246, 0.15); }
+.glow-cyan   { box-shadow: 0 0 20px rgba(0, 212, 255, 0.12); }
+.glow-green  { box-shadow: 0 0 20px rgba(0, 228, 121, 0.15); }
+
+/* Scanline effect */
+.scanline {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 80px;
+  background: linear-gradient(transparent, rgba(0,212,255,0.015), transparent);
+  z-index: 100;
+  pointer-events: none;
+  animation: scanline 10s linear infinite;
+}
+@keyframes scanline {
+  0%   { transform: translateY(-80px); }
+  100% { transform: translateY(100vh); }
+}
+
+/* Node pulse */
+@keyframes nodePulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.15); }
+}
+.pulse { animation: nodePulse 2s ease-in-out infinite; }
+
+/* Typing cursor */
+@keyframes blink { 50% { opacity: 0; } }
+.cursor {
+  display: inline-block;
+  width: 8px; height: 16px;
+  background: var(--green);
+  margin-left: 3px;
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+/* Fade in */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) forwards; }
+.delay-1 { animation-delay: 0.1s; opacity: 0; }
+.delay-2 { animation-delay: 0.2s; opacity: 0; }
+.delay-3 { animation-delay: 0.3s; opacity: 0; }
+
+/* Monospace utility */
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* Material icons baseline */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Gradient text */
+.grad-cyan {
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-soft));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Active left bar for nav items */
+.nav-active {
+  color: var(--cyan);
+  background: rgba(0,212,255,0.06);
+  border-left: 2px solid var(--cyan);
+}
+.nav-item {
+  color: var(--text-muted);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
