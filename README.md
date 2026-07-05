@@ -6,11 +6,13 @@ Every codebase has tribal knowledge — why a decision was made, what broke last
 
 Memory Surgeon turns your repo's commit and issue history into a living, queryable knowledge graph using [Cognee](https://www.cognee.ai/), an open-source memory framework. Ask *why* code was written, catch repeated mistakes, and get an onboarding-ready report generated straight from your project's real history.
 
+## About the Project
+
+Memory Surgeon turns a codebase's commit and issue history into a living, queryable knowledge graph, so a team's institutional knowledge doesn't disappear when someone leaves. It ingests real GitHub history, uses Cognee to extract entities and relationships into an actual graph, and lets you ask natural-language questions grounded in that history, check whether a planned change has already failed before, and auto-generate a full onboarding report — architecture decisions, danger zones, rejected approaches, and lessons learned — straight from the project's real past, not documentation nobody wrote.
+
 ## 🎥 Demo Video
 
-[![Watch the demo](https://img.shields.io/badge/▶-Watch%20Demo-red)](YOUR_VIDEO_URL_HERE)
-
-**[Watch the full demo here → YOUR_VIDEO_URL_HERE]**
+LINK:https://drive.google.com/file/d/1r2IkcPIt1cJHJr5JCQNsMpLpHAiPDOb9/view?usp=sharing
 
 
 ## What it does
@@ -44,11 +46,12 @@ Memory Surgeon turns your repo's commit and issue history into a living, queryab
 ```
 
 **Stack:**
-- Frontend: React 19, Vite, D3.js (graph rendering)
-- Backend: FastAPI, Cognee 1.2.2 (open-source, running fully local — no cloud dependency)
-- LLM: Groq (`llama-3.1-8b-instant` / `llama-3.3-70b-versatile`), via `LLM_INSTRUCTOR_MODE=json_mode` for reliable structured extraction
-- Graph DB: Cognee's local Ladybug engine (embedded, no external DB needed)
-- Embeddings: `fastembed` (local, no API key required)
+- **Frontend:** React 19 + Vite, D3.js for the live knowledge graph visualization
+- **Backend:** FastAPI (Python)
+- **Memory engine:** Cognee (open-source), running fully local — `remember()`, `recall()`, and `improve()` APIs, with a local Ladybug graph database and SQLite metadata store
+- **LLM:** Groq (`llama-3.1-8b-instant` / `llama-3.3-70b-versatile`), accessed via Cognee's LiteLLM integration, using `json_mode` for reliable structured output
+- **Embeddings:** fastembed (local, no external API needed)
+- **Data source:** GitHub REST API via PyGithub, for live commit/issue ingestion
 
 ## Setup
 
@@ -57,9 +60,9 @@ Memory Surgeon turns your repo's commit and issue history into a living, queryab
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate  
 pip install -r requirements.txt
-cp .env.example .env       # fill in your real keys
+cp .env.example .env       
 uvicorn backend.main:app --reload --port 8000
 ```
 
@@ -68,7 +71,7 @@ uvicorn backend.main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
-cp .env.example .env       # or just set VITE_API_URL
+cp .env.example .env       
 npm run dev
 ```
 
@@ -92,7 +95,7 @@ This project runs entirely on Groq's free tier, which has real token-per-minute 
 
 - Ingesting a large repo on Groq's free tier can take several minutes due to rate-limit spacing — this is a quota tradeoff, not a performance bug
 - The Neural Graph shows a clearly labeled demo graph as a fallback if nothing has been ingested yet, rather than silently displaying fake data as real
-
+ 
 ## Why Cognee
 
 Memory Surgeon is built to demonstrate what Cognee can do with a real, continuous use case: not just storing facts, but building institutional memory a team can actually query — using Cognee's `remember()`, `recall()`, and self-improvement APIs as the core engine, not just a bolted-on feature.
