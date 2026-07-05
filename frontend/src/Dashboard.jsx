@@ -570,7 +570,7 @@ function OpsPanel({ status, setStatus, initialRepoUrl }) {
 
   async function generateReport() {
     setReportLoading(true); setReport(null);
-    addLog("Generating tribal knowledge report (5 queries, ~30-60s on free-tier LLM limits)...", C.violet);
+    addLog("Generating tribal knowledge report (5 queries, ~5-6 min — Groq free-tier rate limits force real spacing)...", C.violet);
     try {
       const r = await fetch(`${API}/tribal-report`);
       const data = await r.json();
@@ -784,9 +784,9 @@ export default function Dashboard({ status, setStatus, initialRepoUrl }) {
         {/* Stats */}
         <div style={{ padding: "16px", borderTop: `1px solid ${C.borderSoft}`, marginTop: "auto" }}>
           {[
-            { label: "Nodes", val: status.node_count || 108, color: C.cyan },
-            { label: "Edges", val: status.edge_count || 159, color: C.green },
-            { label: "Records", val: status.record_count || 10, color: C.violet },
+            { label: "Nodes", val: status.node_count ?? 0, color: C.cyan },
+            { label: "Edges", val: status.edge_count ?? 0, color: C.green },
+            { label: "Records", val: status.record_count ?? 0, color: C.violet },
           ].map(s => (
             <div key={s.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
               <span className="mono" style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>{s.label}</span>
@@ -816,9 +816,9 @@ export default function Dashboard({ status, setStatus, initialRepoUrl }) {
             <div className="mono" style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 20 }}>System Pulse</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               {[
-                { label: "Graph Nodes", val: status.node_count || 108, color: C.cyan, icon: "hub" },
-                { label: "Graph Edges", val: status.edge_count || 159, color: C.green, icon: "mediation" },
-                { label: "Records Ingested", val: status.record_count || 10, color: C.violet, icon: "memory" },
+                { label: "Graph Nodes", val: status.node_count ?? 0, color: C.cyan, icon: "hub" },
+                { label: "Graph Edges", val: status.edge_count ?? 0, color: C.green, icon: "mediation" },
+                { label: "Records Ingested", val: status.record_count ?? 0, color: C.violet, icon: "memory" },
                 { label: "Dataset", val: "repo_memory", color: C.amber, icon: "database" },
               ].map(s => (
                 <div key={s.label} style={{ background: C.surfaceLow, border: `1px solid ${C.borderSoft}`, borderRadius: 10, padding: 20 }}>

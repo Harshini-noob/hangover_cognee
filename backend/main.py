@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import cognee
+from cognee.modules.search.types import SearchType
 
 
 
@@ -131,7 +132,7 @@ async def ingest(req: IngestRequest):
             if token and repo_name:
                 from backend.github_fetcher import GitHubFetcher
                 fetcher = GitHubFetcher(repo_name)
-                records = fetcher.fetch_all(max_commits=20, max_issues=10)
+                records = fetcher.fetch_all(max_commits=5, max_issues=10)
             else:
                 missing = []
                 if not token: missing.append("GITHUB_TOKEN (set in backend .env)")
@@ -146,10 +147,30 @@ async def ingest(req: IngestRequest):
         except Exception as e:
             print(f"improve() failed (non-fatal, continuing): {e}")
 
+        # Pull real node/edge counts from the graph engine instead of guessing
+        try:
+            from cognee.infrastructure.databases.graph import get_graph_engine
+            from cognee.modules.data.methods import get_authorized_existing_datasets
+            from cognee.modules.users.methods import get_default_user
+            from cognee.context_global_variables import set_database_global_context_variables
+
+            user = await get_default_user()
+            datasets = await get_authorized_existing_datasets([DATASET], "read", user)
+            if datasets:
+                async with set_database_global_context_variables(datasets[0].id, datasets[0].owner_id):
+                    graph_engine = await get_graph_engine()
+                    real_nodes, real_edges = await graph_engine.get_graph_data()
+                node_count, edge_count = len(real_nodes), len(real_edges)
+            else:
+                node_count, edge_count = 0, 0
+        except Exception as e:
+            print(f"Could not read real graph stats (non-fatal): {e}")
+            node_count, edge_count = 0, 0
+
         state["ingested"] = True
         state["record_count"] = len(records)
-        state["node_count"] = 109   
-        state["edge_count"] = 172
+        state["node_count"] = node_count
+        state["edge_count"] = edge_count
         state["ingesting"] = False
 
         return {
@@ -172,7 +193,9 @@ async def recall(req: RecallRequest):
     try:
         results = await cognee.recall(
             query_text=req.query,
-            datasets=[DATASET]
+            datasets=[DATASET],
+            query_type=SearchType.GRAPH_COMPLETION,
+            top_k=5,
         )
         if not results:
             return {"query": req.query, "answer": "No relevant memory found.", "citations": []}
@@ -227,7 +250,9 @@ async def risk_check(req: RiskRequest):
     try:
         results = await cognee.recall(
             query_text=query,
-            datasets=[DATASET]
+            datasets=[DATASET],
+            query_type=SearchType.GRAPH_COMPLETION,
+            top_k=5,
         )
         if not results:
             return {
@@ -263,8 +288,18 @@ async def risk_check(req: RiskRequest):
 async def get_graph():
     try:
         from cognee.infrastructure.databases.graph import get_graph_engine
-        graph_engine = await get_graph_engine()
-        raw_nodes, raw_edges = await graph_engine.get_graph_data()
+        from cognee.modules.data.methods import get_authorized_existing_datasets
+        from cognee.modules.users.methods import get_default_user
+        from cognee.context_global_variables import set_database_global_context_variables
+
+        user = await get_default_user()
+        datasets = await get_authorized_existing_datasets([DATASET], "read", user)
+        if not datasets:
+            return {"nodes": [], "edges": []}
+
+        async with set_database_global_context_variables(datasets[0].id, datasets[0].owner_id):
+            graph_engine = await get_graph_engine()
+            raw_nodes, raw_edges = await graph_engine.get_graph_data()
 
         def guess_type(props: dict) -> str:
             t = (props.get("type") or props.get("node_type") or "").lower()
@@ -311,9 +346,9 @@ async def tribal_report():
     sections = []
     for i, (title, query) in enumerate(queries):
         if i > 0:
-            await asyncio.sleep(3)  # spread requests to stay under Groq free-tier TPM limits
+            await asyncio.sleep(65)  # each call costs ~3.7k tokens; must wait out the rolling 60s TPM window
         try:
-            results = await cognee.recall(query_text=query, datasets=[DATASET])
+            results = await cognee.recall(query_text=query, datasets=[DATASET], query_type=SearchType.GRAPH_COMPLETION, top_k=5)
             answer = results[0].text if results and hasattr(results[0], "text") else "No data found."
             sections.append({"title": title, "content": answer})
         except Exception as e:
