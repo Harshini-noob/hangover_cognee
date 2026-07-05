@@ -521,13 +521,13 @@ function ChatPanel({ status }) {
 }
 
 // ── Ops Panel ──────────────────────────────────────────────
-function OpsPanel({ status, setStatus }) {
+function OpsPanel({ status, setStatus, initialRepoUrl }) {
   const [ingesting, setIngesting] = useState(false);
   const [log, setLog] = useState([]);
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
-  const [useSample, setUseSample] = useState(true);
-  const [repoUrl, setRepoUrl] = useState("");
+  const [useSample, setUseSample] = useState(!initialRepoUrl);
+  const [repoUrl, setRepoUrl] = useState(initialRepoUrl || "");
 
   function addLog(msg, color = C.muted) { setLog(l => [...l, { msg, color, id: Date.now() }]); }
 
@@ -698,7 +698,7 @@ const NAV_ITEMS = [
   { id: "pulse",  icon: "analytics",    label: "Pulse" },
 ];
 
-export default function Dashboard({ status, setStatus }) {
+export default function Dashboard({ status, setStatus, initialRepoUrl }) {
   const [activeNav, setActiveNav] = useState("graph");
   const [selectedNode, setSelectedNode] = useState(null);
   const [feedbackMsg, setFeedbackMsg] = useState("");
@@ -809,7 +809,7 @@ export default function Dashboard({ status, setStatus }) {
           <ChatPanel status={status} />
         )}
         {activeNav === "ops" && (
-          <OpsPanel status={status} setStatus={setStatus} />
+          <OpsPanel status={status} setStatus={setStatus} initialRepoUrl={initialRepoUrl} />
         )}
         {activeNav === "pulse" && (
           <div style={{ padding: 32 }}>

@@ -140,7 +140,7 @@ export default function Landing({ onEnter }) {
               <input
                 value={repoUrl}
                 onChange={e => setRepoUrl(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && onEnter()}
+                onKeyDown={e => e.key === "Enter" && onEnter(repoUrl)}
                 placeholder="Enter repository URL to begin surgery..."
                 className="mono"
                 style={{
@@ -149,7 +149,7 @@ export default function Landing({ onEnter }) {
                 }}
               />
               <button
-                onClick={onEnter}
+                onClick={() => onEnter(repoUrl)}
                 style={{
                   background: "linear-gradient(135deg, var(--cyan), #0099bb)",
                   color: "#001f27", padding: "8px 20px", borderRadius: 8,

@@ -6,6 +6,7 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function App() {
   const [entered, setEntered] = useState(false);
+  const [initialRepoUrl, setInitialRepoUrl] = useState("");
 
   const [status, setStatus] = useState({
     ingested: false,
@@ -26,10 +27,11 @@ export default function App() {
     <Dashboard
       status={status}
       setStatus={setStatus}
+      initialRepoUrl={initialRepoUrl}
     />
   ) : (
     <LandingPage
-      onEnter={() => setEntered(true)}
+      onEnter={(repoUrl) => { setInitialRepoUrl(repoUrl || ""); setEntered(true); }}
     />
   );
 }
